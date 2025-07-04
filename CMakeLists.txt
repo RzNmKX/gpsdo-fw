@@ -29,6 +29,7 @@ message("Build type: " ${CMAKE_BUILD_TYPE})
 
 add_subdirectory(lib)
 
+if(FALSE) # fake a block comment
 # Create an executable object type
 add_executable(${CMAKE_PROJECT_NAME})
 
@@ -53,3 +54,33 @@ target_link_libraries(${CMAKE_PROJECT_NAME}
     eeprom
     LCD
 )
+endif()
+
+if(TRUE) # fake a block comment
+
+# Create an executable object type
+add_executable(${CMAKE_PROJECT_NAME}h5)
+
+# Add sources to executable
+target_sources(${CMAKE_PROJECT_NAME}h5 PRIVATE
+    src/main.c
+    src/eeprom.c
+    src/frequency.c
+    src/gps.c
+    src/int.c
+    src/menu.c
+)
+
+
+# Add include paths
+target_include_directories(${CMAKE_PROJECT_NAME}h5 PRIVATE
+)
+
+# Add linked libraries
+target_link_libraries(${CMAKE_PROJECT_NAME}h5
+    stm32cubemxh5
+    eepromh5
+    LCDh5
+)
+
+endif()

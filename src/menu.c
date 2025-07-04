@@ -9,7 +9,12 @@
 #include "LCD.h"
 #include "eeprom.h"
 #include "gps.h"
-#include "stm32f1xx_hal_gpio.h"
+#ifdef  STM32H5
+    #include "stm32h5xx_hal_gpio.h"
+#else
+    #include "stm32f1xx_hal_gpio.h"
+#endif
+
 #include "int.h"
 #include "menu.h"
 

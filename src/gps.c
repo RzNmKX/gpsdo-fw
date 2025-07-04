@@ -1,7 +1,12 @@
 #include "gps.h"
 #include "LCD.h"
 #include "main.h"
-#include "stm32f1xx_hal_uart.h"
+#ifdef  STM32H5
+    #include "stm32h5xx_hal_uart.h"
+#else
+    #include "stm32f1xx_hal_uart.h"
+#endif
+
 #include "usart.h"
 #include "eeprom.h"
 #include <stdbool.h>

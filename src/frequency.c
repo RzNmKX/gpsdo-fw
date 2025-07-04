@@ -1,8 +1,14 @@
 #include "frequency.h"
 #include "LCD.h"
-#include "stm32f1xx_hal.h"
-#include "stm32f1xx_hal_gpio.h"
-#include "stm32f1xx_hal_rcc.h"
+#ifdef  STM32H5
+    #include "stm32h5xx_hal.h"
+    #include "stm32h5xx_hal_gpio.h"
+    #include "stm32h5xx_hal_rcc.h"
+#else
+    #include "stm32f1xx_hal.h"
+    #include "stm32f1xx_hal_gpio.h"
+    #include "stm32f1xx_hal_rcc.h"
+#endif
 #include "tim.h"
 #include <stdbool.h>
 #include <stdlib.h>
