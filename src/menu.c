@@ -596,9 +596,16 @@ static void menu_draw()
                     {
                     snprintf(screen_buffer, SCREEN_BUFFER_SIZE, "Lat.D:");
                     LCD_Puts(1, 0, screen_buffer);
-                    double coord_int = floor(gps_latitude_double);
-                    double coord_frac = (gps_latitude_double - coord_int)*1000000;
-                    snprintf(screen_buffer, SCREEN_BUFFER_SIZE, "%d.%d", ((int)coord_int), ((int)coord_frac));
+                    const char *fmt = "%d.%d";
+                    double gps_latitude_double_abs = gps_latitude_double;
+                    if (gps_latitude_double < 0.0)
+                    {
+                            gps_latitude_double_abs *= -1.0;
+                            fmt = "-%d.%d";
+                    }
+                    double coord_int = floor(gps_latitude_double_abs);
+                    double coord_frac = (gps_latitude_double_abs - coord_int)*1000000;
+                    snprintf(screen_buffer, SCREEN_BUFFER_SIZE, fmt, ((int)coord_int), ((int)coord_frac));
                     LCD_Puts(0, 1, screen_buffer);
                     }
                 break;
@@ -606,9 +613,16 @@ static void menu_draw()
                     {
                     snprintf(screen_buffer, SCREEN_BUFFER_SIZE, "Long.D:");
                     LCD_Puts(1, 0, screen_buffer);
-                    double coord_int = floor(gps_longitude_double);
-                    double coord_frac = (gps_longitude_double - coord_int)*1000000;
-                    snprintf(screen_buffer, SCREEN_BUFFER_SIZE, "%d.%d", ((int)coord_int), ((int)coord_frac));
+                    const char *fmt = "%d.%d";
+                    double gps_longitude_double_abs = gps_longitude_double;
+                    if (gps_longitude_double < 0.0)
+                    {
+                            gps_longitude_double_abs *= -1.0;
+                            fmt = "-%d.%d";
+                    }
+                    double coord_int = floor(gps_longitude_double_abs);
+                    double coord_frac = (gps_longitude_double_abs - coord_int)*1000000;
+                    snprintf(screen_buffer, SCREEN_BUFFER_SIZE, fmt, ((int)coord_int), ((int)coord_frac));
                     LCD_Puts(0, 1, screen_buffer);
                     }
                     break;
