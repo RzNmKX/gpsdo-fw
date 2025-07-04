@@ -117,6 +117,9 @@ You now have access to the bluepill board, but you need to bend the 4 pins of th
 You can now launch the [STM32CubeProgrammer software](https://www.st.com/en/development-tools/stm32cubeprog.html) click `Connect`, click `Open File`, select the `gpsdo.bin` file downloaded in the [Release section](https://github.com/fredzo/gpsdo-fw/releases) and hit `Download` in STM32CubeProgrammer:
 ![Bend pins](https://github.com/fredzo/gpsdo-fw/blob/main/doc/stm32-cube-programmer.png?raw=true)
 
+For video instructions, you can check [Tony Albus's BH3SAP GPSDO review at 7'20''](https://www.youtube.com/watch?v=FxD5QzaOiZ4&t=440s): 
+[![Tony Albus's BH3SAP GPSDO review](https://img.youtube.com/vi/FxD5QzaOiZ4/0.jpg)](https://www.youtube.com/watch?v=FxD5QzaOiZ4&t=440s)
+
 ### Hardware Extensions
 
 #### MCU controlled PPS Output
@@ -140,7 +143,7 @@ The dedicated `PPS` menu allows monitoring the deviation between the MCU control
 
 #### GPS UART Passthrough
 
-A GPS UART passthrough has been added on UART1: pins PA2 (TX) and PA3 (RX) can be used to communicate with the GPS module. This is bidirectional, so the GPS can be used by a computer or configured via manufacturer software.
+A GPS UART passthrough has been added on UART2: pins PA2 (TX) and PA3 (RX) can be used to communicate with the GPS module. This is bidirectional, so the GPS can be used by a computer or configured via manufacturer software.
 
 ![GPS Passthrough](https://github.com/fredzo/gpsdo-fw/blob/main/doc/gps-passthrough.jpg?raw=true)
 
