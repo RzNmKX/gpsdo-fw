@@ -4,6 +4,7 @@
 #include "stm32f1xx_hal_uart.h"
 #include "usart.h"
 #include "eeprom.h"
+#include "mcu_time.h"
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -393,6 +394,9 @@ void gps_parse(char* line)
         gps_time[5] = ':';
         // Terminaute time string
         gps_time[8] = '\0';
+
+        // NEW: Sync MCU time with compensated/timezone-adjusted GPS time
+        mcu_time_sync_from_string(gps_time, true);
 
         pch = strtok(NULL, ","); // Latitude
         gps_latitude_double = gps_parse_coordinate(pch,gps_latitude,sizeof(gps_latitude));
