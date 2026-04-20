@@ -215,7 +215,15 @@ The displayed PPB error is a long running average. It counts the number of clock
 
 #### Linux / OSX
 
-Clone the repo, update submodules and do the cmake. (Or just download a release) You should not need any other dependencies than arm-none-eabi-gcc. The bluepill can be flashed in multiple ways, check the documentation for it for information. Included is a openocd configuration for connecting to the device via SWD using a JLink adapter.
+The commands below mirror the exact sequence used to generate `gpsdo.elf` for the RAM/flash usage check:
+
+1. `git submodule update --init --recursive`
+2. `export PATH=~/arm-toolchain/bin:$PATH`
+3. `cmake -S . -B build -DCMAKE_BUILD_TYPE=Release`
+4. `cmake --build build -j`
+5. (Optional) `arm-none-eabi-size build/gpsdo.elf` to review RAM/flash consumption
+
+You should not need any other dependencies than `arm-none-eabi-gcc`. The bluepill can be flashed in multiple ways, check the documentation for it for information. Included is an OpenOCD configuration for connecting to the device via SWD using a JLink adapter.
 
 #### Windows
 

@@ -73,22 +73,6 @@ void gpsdo(void)
     }
     pwm_auto_save = ee_storage.pwm_auto_save;
 
-    if (ee_storage.trend_auto_v == 0xff) {
-        ee_storage.trend_auto_v = true;
-    }
-    trend_auto_v = ee_storage.trend_auto_v;
-    if (ee_storage.trend_auto_h == 0xff) {
-        ee_storage.trend_auto_h = true;
-    }
-    trend_auto_h = ee_storage.trend_auto_h;
-    if (ee_storage.trend_v_scale == 0xffffffff) {
-        ee_storage.trend_v_scale = 70;
-    }
-    trend_v_scale = ee_storage.trend_v_scale;
-    if (ee_storage.trend_h_scale == 0xffffffff) {
-        ee_storage.trend_h_scale = 1;
-    }
-    trend_h_scale = ee_storage.trend_h_scale;
     // Boot menu
     if (ee_storage.boot_menu == 0xff) {
         ee_storage.boot_menu = 0; // Default to main screen
@@ -143,7 +127,6 @@ void gpsdo(void)
     LCD_Init();
 
     lcd_create_chars();
-    init_trend_values();
 
     // warmup();
 

@@ -11,9 +11,6 @@
 // Char code for no sat icon
 #define NO_SAT_ICON_CODE        0x04
 #define NO_SAT_STD_ICON_CODE    '!'
-// Char codes for trend view
-#define TREND_LEFT_CODE         0x7F
-#define TREND_RIGHT_CODE        0x7E
 
 // Min and max values for time offset
 #define MIN_TIME_OFFSET     -14
@@ -23,10 +20,6 @@
 #define DEFAULT_PPB_LOCK_THRESHOLD  50
 #define MAX_PPB_LOCK_THRESHOLD      1000
 
-extern bool trend_auto_h;
-extern bool trend_auto_v;
-extern uint32_t trend_v_scale; 
-extern uint32_t trend_h_scale; 
 
 extern uint32_t gps_baudrate;
 
@@ -38,6 +31,5 @@ void menu_set_correction_algorithm(correction_algo_type algo);
 bool rotary_get_click();
 void menu_run();
 void lcd_create_chars();
-void init_trend_values();
 
 #endif

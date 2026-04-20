@@ -5,6 +5,7 @@
 #include "usart.h"
 #include "eeprom.h"
 #include "mcu_time.h"
+#include "telem.h"
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -12,6 +13,12 @@
 #include <string.h>
 #include <math.h>
 
+
+static bool     telem_pending = false;
+static char     telem_buf[128];
+static uint8_t  telem_send_buf[128];
+static uint32_t last_gps_data_tick = 0;
+#define TELEM_INJECT_DELAY_MS 150
 #define MAX_GPS_LINE        512
 #define GPS_LOCATOR_SIZE    8
 
@@ -85,7 +92,7 @@ bool fifo_read(volatile fifo_buffer_t* fifo, uint8_t* c)
     return true;
 }
 
-#define GPS_RX_BUFFER_SIZE  20
+#define GPS_RX_BUFFER_SIZE  1
 #define COMM_RX_BUFFER_SIZE 1
 
 volatile uint8_t gps_it_buf[GPS_RX_BUFFER_SIZE];
@@ -330,6 +337,36 @@ static bool change_time(char* time_source, char* time_dest, int correction, int 
     return overlap;
 }
 
+static void decrement_formatted_time(char* time_string)
+{
+    int hour = (time_string[0]-'0') * 10 + (time_string[1]-'0');
+    int min  = (time_string[3]-'0') * 10 + (time_string[4]-'0');
+    int sec  = (time_string[6]-'0') * 10 + (time_string[7]-'0');
+
+    sec--;
+    if(sec < 0)
+    {
+        sec = 59;
+        min--;
+        if(min < 0)
+        {
+            min = 59;
+            hour--;
+            if(hour < 0)
+            {
+                hour = 23;
+            }
+        }
+    }
+
+    time_string[0] = (char)((hour/10)+'0');
+    time_string[1] = (char)((hour%10)+'0');
+    time_string[3] = (char)((min/10)+'0');
+    time_string[4] = (char)((min%10)+'0');
+    time_string[6] = (char)((sec/10)+'0');
+    time_string[7] = (char)((sec%10)+'0');
+}
+
 // Maybe use X-CUBE-GNSS here?
 void gps_parse(char* line)
 {
@@ -396,7 +433,13 @@ void gps_parse(char* line)
         gps_time[8] = '\0';
 
         // NEW: Sync MCU time with compensated/timezone-adjusted GPS time
-        mcu_time_sync_from_string(gps_time, true);
+        char mcu_sync_time[sizeof(gps_time)];
+        memcpy(mcu_sync_time, gps_time, sizeof(gps_time));
+        // Remove the +1s PPS compensation before syncing MCU time to avoid double counting
+        decrement_formatted_time(mcu_sync_time);
+        mcu_time_sync_from_string(mcu_sync_time, true);
+
+        telem_pending = true;
 
         pch = strtok(NULL, ","); // Latitude
         gps_latitude_double = gps_parse_coordinate(pch,gps_latitude,sizeof(gps_latitude));
@@ -636,10 +679,25 @@ void gps_read()
     }
 
     if (send_size) {
+        last_gps_data_tick = HAL_GetTick();
         while (huart2.gState != HAL_UART_STATE_READY)
             ;
         memcpy(gps_send_buf, send_buf, SEND_BUFFER_SIZE);
         HAL_UART_Transmit_IT(&huart2, gps_send_buf, send_size);
+    }
+
+    // Inject GPSDO telemetry after GPS burst is complete.
+    // The burst streams for ~750ms at 9600 baud; a 50ms silence means it's done.
+    if (!send_size && telem_pending
+        && (HAL_GetTick() - last_gps_data_tick) > TELEM_INJECT_DELAY_MS) {
+        telem_pending = false;
+        size_t telem_len = telem_format_nmea(telem_buf, sizeof(telem_buf));
+        if (telem_len > 0) {
+            while (huart2.gState != HAL_UART_STATE_READY)
+                ;
+            memcpy(telem_send_buf, telem_buf, telem_len);
+            HAL_UART_Transmit_IT(&huart2, telem_send_buf, telem_len);
+        }
     }
 
     send_size = 0;
