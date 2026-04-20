@@ -1,141 +1,77 @@
 #!/usr/bin/env python3
-"""Live streaming plotter + CSV logger for GPSDO $PGPSD telemetry.
+"""Plot GPSDO telemetry from a CSV log file.
 
-Usage: python3 plot_telem.py [port] [baud]
-  Default: /dev/cu.usbserial-0001 115200
+Usage: python3 plot_telem.py [csvfile]
+  Default: most recent file in logs/
 
-Logs every sample to logs/gpsdo_YYYYMMDD_HHMMSS.csv alongside the plot.
+Use log_telem.py to capture data, then plot_telem.py to view it.
+Rerun to refresh with new data.
 """
 
 import sys
 import os
-import time
+import glob
 import csv
-import serial
 import matplotlib.pyplot as plt
-import matplotlib.animation as animation
-from collections import deque
-from datetime import datetime, timezone
+import matplotlib.dates as mdates
+from datetime import datetime
 
-PORT = sys.argv[1] if len(sys.argv) > 1 else "/dev/cu.usbserial-0001"
-BAUD = int(sys.argv[2]) if len(sys.argv) > 2 else 115200
-WINDOW = 300  # seconds of history on screen
+def find_latest_log():
+    log_dir = os.path.join(os.path.dirname(__file__), "..", "logs")
+    files = glob.glob(os.path.join(log_dir, "gpsdo_*.csv"))
+    if not files:
+        print("No log files found in logs/")
+        sys.exit(1)
+    return max(files, key=os.path.getmtime)
 
-# --- CSV setup ---
-log_dir = os.path.join(os.path.dirname(__file__), "..", "logs")
-os.makedirs(log_dir, exist_ok=True)
-log_path = os.path.join(log_dir, f"gpsdo_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv")
-log_file = open(log_path, "w", newline="")
-csv_writer = csv.writer(log_file)
-csv_writer.writerow(["utc", "elapsed_s", "ppb_x100", "pwm", "pps_ns", "freq", "lock", "uptime", "status", "temp", "pressure"])
-print(f"Logging to {log_path}")
+csv_path = sys.argv[1] if len(sys.argv) > 1 else find_latest_log()
+print(f"Plotting {csv_path}")
 
-# --- Ring buffers for plot ---
-ts       = deque(maxlen=WINDOW)
-ppb      = deque(maxlen=WINDOW)
-pwm      = deque(maxlen=WINDOW)
-pps_us   = deque(maxlen=WINDOW)
-freq_err = deque(maxlen=WINDOW)
+ts, ppb, pwm, pps_us, freq_err = [], [], [], [], []
 
-ser = serial.Serial(PORT, BAUD, timeout=0.1)
-ser.reset_input_buffer()
-t0 = time.monotonic()
+with open(csv_path) as f:
+    reader = csv.reader(f)
+    next(reader)  # skip header
+    for row in reader:
+        try:
+            t = datetime.fromisoformat(row[0].replace("Z", "+00:00"))
+            ts.append(t)
+            ppb.append(int(row[2]))
+            pwm.append(int(row[3]))
+            pps_us.append(int(row[4]) / 1000.0)
+            freq_err.append(int(row[5]) - 70_000_000)
+        except (ValueError, IndexError):
+            continue
 
-fig, axes = plt.subplots(4, 1, figsize=(12, 8), sharex=True)
-fig.suptitle(f"GPSDO Telemetry — {PORT} @ {BAUD}", fontsize=11)
+if not ts:
+    print("No valid samples found.")
+    sys.exit(1)
 
-titles = ["PPB (×0.01)", "PWM (DAC)", "PPS Error (μs)", "Freq Error (Hz)"]
-ylabels = ["ppb×100", "PWM", "μs", "Hz"]
+span_s = (ts[-1] - ts[0]).total_seconds()
+print(f"Samples: {len(ts)}, span: {span_s/3600:.1f} hours")
+
+fig, axes = plt.subplots(4, 1, figsize=(14, 9), sharex=True)
+fig.suptitle(f"GPSDO Telemetry — {os.path.basename(csv_path)}", fontsize=11)
+
+titles = ["PPB (\u00d70.01)", "PWM (DAC)", "PPS Error (\u03bcs)", "Freq Error (Hz)"]
+ylabels = ["ppb\u00d7100", "PWM", "\u03bcs", "Hz"]
 colors = ["#2196F3", "#FF9800", "#4CAF50", "#E91E63"]
-lines = []
+datasets = [ppb, pwm, pps_us, freq_err]
 
 for i, ax in enumerate(axes):
-    ln, = ax.plot([], [], color=colors[i], linewidth=1)
-    lines.append(ln)
+    ax.plot(ts, datasets[i], color=colors[i], linewidth=0.6, alpha=0.7)
     ax.set_ylabel(ylabels[i], fontsize=9)
     ax.set_title(titles[i], fontsize=9, loc="left")
     ax.grid(True, alpha=0.3)
     ax.tick_params(labelsize=8)
 
-axes[-1].set_xlabel("Time (s)")
+# Format x-axis based on span
+if span_s > 7200:
+    axes[-1].xaxis.set_major_formatter(mdates.DateFormatter("%H:%M"))
+    axes[-1].xaxis.set_major_locator(mdates.HourLocator())
+else:
+    axes[-1].xaxis.set_major_formatter(mdates.DateFormatter("%H:%M:%S"))
+
+axes[-1].set_xlabel("UTC")
 fig.tight_layout()
-
-
-def parse_pgpsd(line):
-    """Parse $PGPSD,ppb,pwm,pps_ns,freq,lock,uptime,status,temp,pressure*XX"""
-    try:
-        if not line.startswith("$PGPSD,"):
-            return None
-        body = line.split("*")[0]
-        fields = body.split(",")
-        if len(fields) < 8:
-            return None
-        return {
-            "ppb":      int(fields[1]),
-            "pwm":      int(fields[2]),
-            "pps_ns":   int(fields[3]),
-            "freq":     int(fields[4]),
-            "lock":     fields[5],
-            "uptime":   fields[6],
-            "status":   fields[7],
-            "temp":     fields[8] if len(fields) > 8 else "",
-            "pressure": fields[9] if len(fields) > 9 else "",
-        }
-    except (ValueError, IndexError):
-        return None
-
-
-def update(_frame):
-    while ser.in_waiting:
-        try:
-            raw = ser.readline().decode("ascii", errors="replace").strip()
-        except Exception:
-            continue
-        d = parse_pgpsd(raw)
-        if d is None:
-            continue
-
-        t = time.monotonic() - t0
-        now_utc = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%fZ")
-
-        # Log every sample
-        csv_writer.writerow([
-            now_utc, f"{t:.3f}",
-            d["ppb"], d["pwm"], d["pps_ns"], d["freq"],
-            d["lock"], d["uptime"], d["status"],
-            d["temp"], d["pressure"],
-        ])
-        log_file.flush()
-
-        # Plot buffers
-        ts.append(t)
-        ppb.append(d["ppb"])
-        pwm.append(d["pwm"])
-        pps_us.append(d["pps_ns"] / 1000.0)
-        freq_err.append(d["freq"] - 70_000_000)
-
-    if not ts:
-        return lines
-
-    t_list = list(ts)
-    datasets = [list(ppb), list(pwm), list(pps_us), list(freq_err)]
-
-    for i, (ln, data) in enumerate(zip(lines, datasets)):
-        ln.set_data(t_list, data)
-        ax = axes[i]
-        ax.set_xlim(max(0, t_list[-1] - WINDOW), t_list[-1] + 2)
-        if data:
-            lo, hi = min(data), max(data)
-            margin = max(abs(hi - lo) * 0.1, 1)
-            ax.set_ylim(lo - margin, hi + margin)
-
-    return lines
-
-
-try:
-    ani = animation.FuncAnimation(fig, update, interval=500, blit=False, cache_frame_data=False)
-    plt.show()
-finally:
-    log_file.close()
-    ser.close()
-    print(f"\nSaved {log_path}")
+plt.show()
