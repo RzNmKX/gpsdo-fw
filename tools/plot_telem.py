@@ -2,7 +2,7 @@
 """Live streaming plotter + CSV logger for GPSDO $PGPSD telemetry.
 
 Usage: python3 plot_telem.py [port] [baud]
-  Default: /dev/cu.usbserial-0001 9600
+  Default: /dev/cu.usbserial-0001 115200
 
 Logs every sample to logs/gpsdo_YYYYMMDD_HHMMSS.csv alongside the plot.
 """
@@ -18,7 +18,7 @@ from collections import deque
 from datetime import datetime, timezone
 
 PORT = sys.argv[1] if len(sys.argv) > 1 else "/dev/cu.usbserial-0001"
-BAUD = int(sys.argv[2]) if len(sys.argv) > 2 else 9600
+BAUD = int(sys.argv[2]) if len(sys.argv) > 2 else 115200
 WINDOW = 300  # seconds of history on screen
 
 # --- CSV setup ---
